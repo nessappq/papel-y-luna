@@ -16,14 +16,7 @@ var State = (function () {
   }
   function saveLS(key, val) { localStorage.setItem(key, JSON.stringify(val)); }
 
-  var products = loadLS(PROD_KEY, [
-    { id:'P001', name:'Cuaderno Universitario', category:'Cuadernos',    price:8500,  cost:5000,  code:'P001', trackStock:true,  stock:20 },
-    { id:'P002', name:'Lápiz HB x12',           category:'Lápices',      price:4200,  cost:2500,  code:'P002', trackStock:true,  stock:50 },
-    { id:'P003', name:'Resaltador Neón',         category:'Marcadores',   price:3500,  cost:1800,  code:'P003', trackStock:true,  stock:30 },
-    { id:'P004', name:'Papel Carta Resma',       category:'Papel',        price:15000, cost:10000, code:'P004', trackStock:true,  stock:15 },
-    { id:'P005', name:'Pegante en Barra',        category:'Adhesivos',    price:2800,  cost:1200,  code:'P005', trackStock:false, stock:0  },
-    { id:'P006', name:'Tijeras Escolar',         category:'Herramientas', price:6000,  cost:3000,  code:'P006', trackStock:true,  stock:10 },
-  ]);
+  var products = loadLS(PROD_KEY, []);
   var sales      = loadLS(SALES_KEY, []);
   var openSales  = loadLS(OPEN_SALES_KEY, []);
   var purchases  = loadLS(PURCHASES_KEY, []);
@@ -47,7 +40,6 @@ var State = (function () {
   var cart      = [];
   var payMethod = null;
 
-  // ID helpers
   function nextId(arr, prefix) {
     var nums = arr.map(function(x){ return parseInt(x.id.replace(prefix,'')) || 0; });
     var max  = nums.length ? Math.max.apply(null, nums) : 0;
@@ -70,7 +62,6 @@ var State = (function () {
     return 'COM' + String(max + 1).padStart(4, '0');
   }
 
-  // Persistencia
   function saveProducts()    { saveLS(PROD_KEY, products); }
   function saveSales()       { saveLS(SALES_KEY, sales); }
   function saveOpenSalesLS() { saveLS(OPEN_SALES_KEY, openSales); }
@@ -79,7 +70,6 @@ var State = (function () {
   function saveSuppliers()   { saveLS(SUPPLIERS_KEY, suppliers); }
   function saveCustomers()   { saveLS(CUSTOMERS_KEY, customers); }
 
-  // Productos
   function getProducts()      { return products; }
   function getProductById(id) {
     for (var i = 0; i < products.length; i++) if (products[i].id === id) return products[i];
@@ -104,7 +94,6 @@ var State = (function () {
     saveProducts();
   }
 
-  // Carrito
   function getCart()       { return cart; }
   function getPayMethod()  { return payMethod; }
   function setPayMethod(m) { payMethod = m; }
@@ -142,7 +131,6 @@ var State = (function () {
   }
   function clearCart() { cart = []; payMethod = null; }
 
-  // Ventas abiertas
   function saveOpenSale(label) {
     if (!cart.length) return null;
     var os = {
@@ -178,7 +166,6 @@ var State = (function () {
     saveOpenSalesLS();
   }
 
-  // Ventas cerradas
   function confirmSale(cashReceived) {
     if (!cart.length || !payMethod) return null;
     var total = cartTotal();
@@ -207,7 +194,6 @@ var State = (function () {
     return null;
   }
 
-  // Compras
   function addPurchase(data) {
     var id = nextPurchaseId();
     var p  = Object.assign({ id: id, date: new Date().toISOString() }, data);
@@ -228,7 +214,6 @@ var State = (function () {
     return null;
   }
 
-  // Categorias
   function getCategories()     { return categories; }
   function getCategoryById(id) {
     for (var i = 0; i < categories.length; i++) if (categories[i].id === id) return categories[i];
@@ -252,7 +237,6 @@ var State = (function () {
     saveCategories();
   }
 
-  // Proveedores
   function getSuppliers()     { return suppliers; }
   function getSupplierById(id){
     for (var i = 0; i < suppliers.length; i++) if (suppliers[i].id === id) return suppliers[i];
@@ -276,7 +260,6 @@ var State = (function () {
     saveSuppliers();
   }
 
-  // Clientes
   function getCustomers()     { return customers; }
   function getCustomerById(id){
     for (var i = 0; i < customers.length; i++) if (customers[i].id === id) return customers[i];
@@ -300,33 +283,32 @@ var State = (function () {
     saveCustomers();
   }
 
-
-  // ── Metodos async para API (Google Sheets) ──────────────────
-
-  /**
-   * Carga productos desde Google Sheets y actualiza el array local.
-   * Si la API falla, deja los productos de localStorage intactos.
-   */
   async function loadProductsFromAPI() {
     var data = await apiGet('productos');
     if (data && data.length) {
-      products = data;
-      saveProducts(); // sincroniza cache local
+      products = data.map(function(p) {
+        return {
+          id:         String(p.id),
+          code:       String(p.code || p.id),
+          name:       String(p.name || ''),
+          category:   String(p.category || ''),
+          price:      parseFloat(p.price) || 0,
+          cost:       parseFloat(p.cost)  || 0,
+          stock:      parseInt(p.stock)   || 0,
+          trackStock: p.trackStock === true || p.trackStock === 'true',
+          image:      p.image || ''
+        };
+      });
+      saveProducts();
       return true;
     }
-    return false; // fallo silencioso, se usan datos locales
+    return false;
   }
 
-  /**
-   * Envia una venta confirmada a Google Sheets via POST.
-   */
   async function postSaleToAPI(sale) {
     return await apiPost('ventas', sale);
   }
 
-  /**
-   * Envia una compra registrada a Google Sheets via POST.
-   */
   async function postPurchaseToAPI(purchase) {
     return await apiPost('compras', purchase);
   }
