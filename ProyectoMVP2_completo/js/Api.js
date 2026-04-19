@@ -1,7 +1,7 @@
 // Api.js — Integracion con Google Sheets via fetch + async/await
 
 
-var API_URL  = "https://script.google.com/macros/s/AKfycbxgYDWjGb4xHX6vybwa-FGoJkysSpdts_vJlKvi4xxgfOkKAAGYq5kBrgYFkfB3Unrz/exec";
+var API_URL  = "https://script.google.com/macros/s/AKfycbx65lEM4MDoAphgvOASTVXMmhUBC3eOAmIeEh49z2ALOX3vO4zPFLTNGly2HE7Nc--M/exec";
 
 var API_DISPONIBLE = true;
 
