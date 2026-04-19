@@ -1,38 +1,43 @@
-// Api.js — Integracion con Google Sheets via fetch + async/await
-
-
-var API_URL  = "https://script.google.com/macros/s/AKfycbx65lEM4MDoAphgvOASTVXMmhUBC3eOAmIeEh49z2ALOX3vO4zPFLTNGly2HE7Nc--M/exec";
+var API_URL = "https://script.google.com/macros/s/AKfycbx65lEM4MDoAphgvOASTVXMmhUBC3eOAmIeEh49z2ALOX3vO4zPFLTNG--M/exec";
 
 var API_DISPONIBLE = true;
 
-
+function jsonpRequest(url) {
+  return new Promise(function(resolve, reject) {
+    var callbackName = 'cb_' + Date.now();
+    window[callbackName] = function(data) {
+      resolve(data);
+      delete window[callbackName];
+      document.head.removeChild(script);
+    };
+    var script = document.createElement('script');
+    script.src = url + '&callback=' + callbackName;
+    script.onerror = function() {
+      reject(new Error('Error de conexion'));
+      delete window[callbackName];
+      document.head.removeChild(script);
+    };
+    document.head.appendChild(script);
+  });
+}
 
 async function apiGet(resource) {
-  if (!API_DISPONIBLE) return null;
   try {
-    var url      = API_URL + '?resource=' + resource + '&t=' + Date.now();
-    var response = await fetch(url);
-    var data     = await response.json();
-    return Array.isArray(data) ? data : (data.data || null);
-  } catch (e) {
-    console.warn('[API] Error GET ' + resource + ':', e.message);
+    var url = API_URL + '?resource=' + resource + '&t=' + Date.now();
+    return await jsonpRequest(url);
+  } catch(e) {
+    console.warn('[API] Error GET:', e.message);
     return null;
   }
 }
 
-
 async function apiPost(resource, payload) {
-  if (!API_DISPONIBLE) return { success: false, message: 'API no configurada' };
   try {
-    var response = await fetch(API_URL, {
-      method:  'POST',
-      headers: { 'Content-Type': 'text/plain' },
-      body:    JSON.stringify({ resource: resource, data: payload })
-    });
-    var result = await response.json();
-    return result || { success: false };
-  } catch (e) {
-    console.warn('[API] Error POST ' + resource + ':', e.message);
+    var jsonStr = encodeURIComponent(JSON.stringify(payload));
+    var url = API_URL + '?resource=' + resource + '&action=post&data=' + jsonStr + '&t=' + Date.now();
+    return await jsonpRequest(url);
+  } catch(e) {
+    console.warn('[API] Error POST:', e.message);
     return { success: false, message: e.message };
   }
 }
